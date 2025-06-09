@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard Mercader</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #2d3748;
+    }
+    .login-container {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .login-form {
+      background: white;
+      padding: 40px;
+      border-radius: 20px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      width: 100%; max-width: 400px;
+    }
+    .login-form h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 2em;
+    }
+    .form-group { margin-bottom: 20px; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 10px;
+      transition: 0.3s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .btn:hover {
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+      transform: translateY(-2px);
+    }
+    .dashboard {
+      display: none;
+      padding: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+    .dashboard-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      flex-wrap: wrap;
+    }
+    .dashboard-header h2 {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .logout-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #e53e3e, #c53030);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .add-item-form, .item-card {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .form-row .form-group {
+      flex: 1 1 200px;
+    }
+    .items-container {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-height: 70vh;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+    .item-image {
+      width: 180px;
+      height: 180px;
+      border-radius: 12px;
+      border: 2px solid #e2e8f0;
+      object-fit: cover;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .chart-container {
+      height: 250px;
+      margin: 15px 0;
+    }
+    .btn-sold {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #e53e3e, #c53030);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-sold:hover {
+      transform: translateY(-2px);
+    }
+    @media (max-width: 768px) {
+      .form-row {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loginContainer" class="login-container">
+    <form class="login-form" onsubmit="login(event)">
+      <h1>💼 Login Mercader</h1>
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="username" required>
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="password" required>
+      </div>
+      <button class="btn" type="submit">Iniciar Sesión</button>
+    </form>
+  </div>
+
+  <div id="dashboard" class="dashboard">
+    <div class="dashboard-header">
+      <h2>📊 Dashboard Financiero MMORPG</h2>
+      <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+    </div>
+
+    <div class="add-item-form">
+      <h3>➕ Agregar Nuevo Item</h3>
+      <form onsubmit="addItem(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Precio de Adquisición</label>
+            <input type="number" id="buyPrice" required min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Costo Diario Publicitario</label>
+            <input type="number" id="adCost" required min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Precio Estimado de Venta</label>
+            <input type="number" id="sellPrice" required min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Días en Subasta</label>
+            <input type="number" id="days" required min="1">
+          </div>
+        </div>
+        <button class="btn" type="submit">Agregar Item</button>
+      </form>
+    </div>
+
+    <div class="items-container" id="itemsContainer">
+      <!-- Cards aparecerán aquí -->
+    </div>
+  </div>
+
+  <script>
+    let items = JSON.parse(localStorage.getItem("mercaderItems")) || [];
+    let counter = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
+
+    function saveToLocalStorage() {
+      localStorage.setItem("mercaderItems", JSON.stringify(items));
+    }
+
+    function login(e) {
+      e.preventDefault();
+      document.getElementById("loginContainer").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+      renderItems();
+    }
+
+    function logout() {
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("loginContainer").style.display = "flex";
+    }
+
+    function addItem(e) {
+      e.preventDefault();
+      const item = {
+        id: counter++,
+        buyPrice: parseFloat(document.getElementById("buyPrice").value),
+        adCost: parseFloat(document.getElementById("adCost").value),
+        sellPrice: parseFloat(document.getElementById("sellPrice").value),
+        days: parseInt(document.getElementById("days").value),
+        image: null
+      };
+      items.push(item);
+      saveToLocalStorage();
+      renderItems();
+      e.target.reset();
+    }
+
+    function renderItems() {
+      const container = document.getElementById("itemsContainer");
+      container.innerHTML = "";
+      items.forEach(item => {
+        const profit = item.sellPrice - item.buyPrice - (item.adCost * item.days);
+        const daily = profit / item.days;
+
+        const card = document.createElement("div");
+        card.className = "item-card";
+
+        const img = document.createElement("img");
+        img.className = "item-image";
+        img.src = item.image || "";
+        img.alt = "Imagen";
+        img.onclick = () => uploadImage(item.id);
+        if (!item.image) {
+          img.style.background = "#edf2f7";
+          img.style.display = "flex";
+          img.style.alignItems = "center";
+          img.style.justifyContent = "center";
+          img.alt = "Haz clic para subir imagen";
+          img.src = "";
+        }
+
+        const details = document.createElement("div");
+        details.innerHTML = `
+          <p><strong>Precio Compra:</strong> $${item.buyPrice}</p>
+          <p><strong>Costo Diario:</strong> $${item.adCost}</p>
+          <p><strong>Precio Venta:</strong> $${item.sellPrice}</p>
+          <p><strong>Días:</strong> ${item.days}</p>
+          <p><strong>Ganancia Total:</strong> $${profit.toFixed(2)}</p>
+          <p><strong>Ganancia Diaria:</strong> $${daily.toFixed(2)}</p>
+        `;
+
+        const chartDiv = document.createElement("div");
+        chartDiv.className = "chart-container";
+        chartDiv.innerHTML = `<canvas id="chart-${item.id}"></canvas>`;
+
+        const soldBtn = document.createElement("button");
+        soldBtn.className = "btn-sold";
+        soldBtn.textContent = "🔥 SOLD - Marcar como Vendido";
+        soldBtn.onclick = () => removeItem(item.id);
+
+        card.appendChild(img);
+        card.appendChild(details);
+        card.appendChild(chartDiv);
+        card.appendChild(soldBtn);
+        container.appendChild(card);
+
+        drawChart(item);
+      });
+    }
+
+    function removeItem(id) {
+      items = items.filter(i => i.id !== id);
+      saveToLocalStorage();
+      renderItems();
+    }
+
+    function uploadImage(id) {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (file) {
+          const url = URL.createObjectURL(file);
+          const item = items.find(i => i.id === id);
+          if (item) {
+            item.image = url;
+            renderItems();
+          }
+        }
+      };
+      input.click();
+    }
+
+    function drawChart(item) {
+      const ctx = document.getElementById(`chart-${item.id}`);
+      if (!ctx) return;
+      const labels = Array.from({ length: item.days }, (_, i) => `Día ${i + 1}`);
+      const profits = labels.map((_, i) =>
+        (item.sellPrice - item.buyPrice - item.adCost * (i + 1)).toFixed(2)
+      );
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Ganancia Acumulada',
+            data: profits,
+            borderColor: '#38a169',
+            backgroundColor: 'rgba(56, 161, 105, 0.1)',
+            tension: 0.4,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { display: false },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: value => "$" + value
+              }
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>
