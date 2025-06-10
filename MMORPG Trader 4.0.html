@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mercader Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #2d3748;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    h2 {
+      color: white;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    form {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      background: white;
+      padding: 15px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    }
+    form input, form button {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    form button {
+      grid-column: span 2;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .item-card {
+      background: white;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .item-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 10px;
+    }
+    .item-image {
+      width: 100%;
+      max-width: 180px;
+      height: 180px;
+      object-fit: cover;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .btn-sold {
+      background: linear-gradient(135deg, #e53e3e, #c53030);
+      color: white;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      width: 100%;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal img {
+      max-width: 90vw;
+      max-height: 90vh;
+      border-radius: 12px;
+      box-shadow: 0 0 30px black;
+    }
+    @media(max-width: 600px) {
+      .item-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="modal" class="modal" onclick="closeModal()">
+    <img id="modalImage" />
+  </div>
+
+  <div class="container">
+    <h2>📦 Mercader Dashboard MMORPG</h2>
+    <form onsubmit="addItem(event)">
+      <input type="text" id="itemName" placeholder="Nombre del ítem" required />
+      <input type="number" id="buyPrice" placeholder="Precio de compra" required />
+      <input type="number" id="adCost" placeholder="Costo diario" required />
+      <input type="number" id="sellPrice" placeholder="Precio venta" required />
+      <input type="number" id="days" placeholder="Días" required />
+      <button type="submit">Agregar ítem</button>
+    </form>
+
+    <div id="itemsContainer"></div>
+    
+  </div>
+
+  <script>
+let items = JSON.parse(localStorage.getItem("mercaderItems")) || [];
+let counter = items.length > 0 ? Math.max(...items.map(i => i.id)) + 1 : 1;
+
+function save() {
+  localStorage.setItem("mercaderItems", JSON.stringify(items));
+}
+
+function addItem(e) {
+  e.preventDefault();
+  const item = {
+    id: counter++,
+    name: document.getElementById("itemName").value,
+    buyPrice: parseFloat(document.getElementById("buyPrice").value),
+    adCost: parseFloat(document.getElementById("adCost").value),
+    sellPrice: parseFloat(document.getElementById("sellPrice").value),
+    days: parseInt(document.getElementById("days").value),
+    image: null
+  };
+  items.push(item);
+  save();
+  render();
+  e.target.reset();
+}
+
+function render() {
+  const container = document.getElementById("itemsContainer");
+  container.innerHTML = "";
+  items.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+
+    const grid = document.createElement("div");
+    grid.className = "item-grid";
+
+    // Imagen
+    const img = document.createElement("img");
+    img.className = "item-image";
+    img.src = item.image || "";
+    img.alt = "Imagen del ítem";
+    img.onclick = () => item.image ? openModal(item.image) : uploadImage(item.id);
+    grid.appendChild(img);
+
+    // Campos editables
+    const fields = [
+      { key: "name", label: "Nombre", type: "text" },
+      { key: "buyPrice", label: "Compra", type: "number" },
+      { key: "adCost", label: "Publicidad", type: "number" },
+      { key: "sellPrice", label: "Venta", type: "number" },
+      { key: "days", label: "Días", type: "number" }
+    ];
+
+    fields.forEach(f => {
+      const input = document.createElement("input");
+      input.type = f.type;
+      input.value = item[f.key];
+      input.placeholder = f.label;
+      input.onchange = () => {
+        item[f.key] = f.type === "number" ? parseFloat(input.value) : input.value;
+        save();
+        updateCard(card, item);
+      };
+      grid.appendChild(input);
+    });
+
+    card.appendChild(grid);
+
+    // Resultados
+    const result = document.createElement("div");
+    result.className = "result-text";
+    result.style.margin = "10px 0";
+    card.appendChild(result);
+
+    // Gráfico
+    const canvas = document.createElement("canvas");
+    canvas.id = `chart-${item.id}`;
+    canvas.height = 200;
+    card.appendChild(canvas);
+
+    // Botón SOLD
+    const soldBtn = document.createElement("button");
+    soldBtn.className = "btn-sold";
+    soldBtn.textContent = "🔥 SOLD";
+    soldBtn.onclick = () => {
+      items = items.filter(i => i.id !== item.id);
+      save();
+      render();
+    };
+    card.appendChild(soldBtn);
+
+    container.appendChild(card);
+    updateCard(card, item);
+  });
+}
+
+function updateCard(card, item) {
+  const profit = item.sellPrice - item.buyPrice - (item.adCost * item.days);
+  const daily = profit / item.days;
+  const result = card.querySelector(".result-text");
+  result.innerHTML = `<strong>Ganancia Total:</strong> $${profit.toFixed(2)}<br>
+                      <strong>Ganancia Diaria:</strong> $${daily.toFixed(2)}`;
+
+  const ctx = card.querySelector("canvas").getContext("2d");
+  if (ctx.chart) ctx.chart.destroy();
+
+  const labels = Array.from({ length: item.days }, (_, i) => `Día ${i + 1}`);
+  const data = labels.map((_, i) =>
+    (item.sellPrice - item.buyPrice - item.adCost * (i + 1)).toFixed(2)
+  );
+
+  ctx.chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Ganancia Acumulada',
+        data,
+        borderColor: '#38a169',
+        backgroundColor: 'rgba(56, 161, 105, 0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: value => "$" + value
+          }
+        }
+      }
+    }
+  });
+}
+
+function uploadImage(id) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = "image/*";
+  input.onchange = e => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const item = items.find(i => i.id === id);
+      item.image = ev.target.result;
+      save();
+      render();
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+function openModal(src) {
+  document.getElementById("modalImage").src = src;
+  document.getElementById("modal").style.display = "flex";
+}
+function closeModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+render();
+</script>
+</body>
+</html>
+
